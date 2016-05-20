@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"git.name.im/bamboo/config.git"
+	"github.com/scofieldpeng/config-go"
 	"github.com/garyburd/redigo/redis"
 	"github.com/vaughan0/go-ini"
 	"strings"
