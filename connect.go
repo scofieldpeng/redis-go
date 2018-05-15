@@ -5,27 +5,31 @@ import (
 	"github.com/vaughan0/go-ini"
 	"strings"
 	"time"
+	configService "github.com/scofieldpeng/config-go"
 )
 
-var (
-	configCaches ini.File               // 配置缓存
-	pools        map[string]*redis.Pool // redis进程池
+type (
+	Config struct {
+		MaxIdle     int
+		MaxActive   int
+		IdleTimeOut time.Duration
+		Wait        bool
+	}
+	// 连接池结构体
+	Pool struct {
+		pools  map[string]*redis.Pool
+		config Config
+	}
 )
-
-type Config struct {
-	MaxIdle     int
-	MaxActive   int
-	IdleTimeOut time.Duration
-	Wait        bool
-}
 
 var (
 	config = Config{
 		MaxIdle:     5,
 		MaxActive:   100,
-		IdleTimeOut: time.Second * time.Duration(30),
+		IdleTimeOut: time.Second * time.Duration(DefaultIdleTimeout),
 		Wait:        true,
 	}
+	pool Pool
 )
 
 func (c *Config) Set(data Config) {
@@ -48,7 +52,7 @@ const (
 )
 
 // 读取某个节点的内存池对象,参数node为要读取的节点名称,默认读取default节点
-func Pool(node ...string) *redis.Pool {
+func Select(node ...string) *redis.Pool {
 	if len(node) == 0 {
 		node = make([]string, 1)
 		node[0] = "default"
@@ -57,8 +61,8 @@ func Pool(node ...string) *redis.Pool {
 }
 
 // pool 初始化某个node的pool
-func pool(nodeName, nodeConfig string) {
-	idleNum := config.Int(configCaches.Get("config", "maxIdle"))
+func (p *Pool) pool(nodeName, nodeConfig string) {
+	idleNum := configService.Int(configCaches.Get("config", "maxIdle"))
 	if idleNum < 1 {
 		idleNum = 5
 	}
@@ -97,13 +101,20 @@ func pool(nodeName, nodeConfig string) {
 	}
 }
 
+func (p *Pool) Select(nodeName string)(pool *redis.Pool,err error) {
+	return
+}
+
 // Init 初始化redis配置
 func Init(redisConfig Config, nodeConfig ini.File) {
-	config.Set(redisConfig)
+	var (
+		findDefaultNode = false
+		configNodes     = nodeConfig.Section("redis_nodes")
+	)
 
+	config.Set(redisConfig)
 	pools = make(map[string]*redis.Pool)
-	configNodes := configCaches.Section("nodes")
-	findDefaultNode := false
+
 	for nodeName, node := range configNodes {
 		if nodeName == DefaultNodeName {
 			findDefaultNode = true
