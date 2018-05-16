@@ -5,7 +5,7 @@ import (
 	"github.com/vaughan0/go-ini"
 	"strings"
 	"time"
-	configService "github.com/scofieldpeng/config-go"
+	"errors"
 )
 
 type (
@@ -13,6 +13,7 @@ type (
 		MaxIdle     int
 		MaxActive   int
 		IdleTimeOut time.Duration
+		Timeout     time.Duration
 		Wait        bool
 	}
 	// 连接池结构体
@@ -27,6 +28,7 @@ var (
 		MaxIdle:     5,
 		MaxActive:   100,
 		IdleTimeOut: time.Second * time.Duration(DefaultIdleTimeout),
+		Timeout:     time.Second * time.Duration(DefaultTimeout),
 		Wait:        true,
 	}
 	pool Pool
@@ -42,6 +44,9 @@ func (c *Config) Set(data Config) {
 	if data.IdleTimeOut > 0 {
 		c.IdleTimeOut = data.IdleTimeOut
 	}
+	if data.Timeout > 0 {
+		c.Timeout = data.Timeout
+	}
 	c.Wait = data.Wait
 }
 
@@ -51,38 +56,53 @@ const (
 	DefaultTimeout     = 60        // dial时的默认请求,读取和写入超时时间
 )
 
-// 读取某个节点的内存池对象,参数node为要读取的节点名称,默认读取default节点
-func Select(node ...string) *redis.Pool {
+var (
+	// 节点没有找到
+	ErrNodeNotFound = errors.New("node not found")
+)
+
+// 读取某个节点的连接池对象,参数node为要读取的节点名称,默认读取default节点
+func SelectPool(node ...string) (p *redis.Pool, err error) {
 	if len(node) == 0 {
 		node = make([]string, 1)
 		node[0] = "default"
 	}
-	return pools[node[0]]
+
+	p, err = pool.Select(node[0])
+	return
+}
+
+// 新建连接
+func NewConn(nodeName ...string) (conn redis.Conn, err error) {
+	p, err := SelectPool(nodeName...)
+	if err == nil {
+		conn = p.Get()
+	}
+
+	return
+}
+
+// 执行命令,传入节点名称，执行的命令名，命令参数，返回的第一个参数为返回值，如果出错，第二个参数为空
+// 建议用redis.Int()等进行转义结果
+func Command(nodeName string, command string, args ...interface{}) (data interface{}, err error) {
+	conn, err := NewConn(nodeName)
+	defer conn.Close()
+	if err != nil {
+		return data, err
+	}
+	data, err = conn.Do(command, args...)
+	return
 }
 
 // pool 初始化某个node的pool
-func (p *Pool) pool(nodeName, nodeConfig string) {
-	idleNum := configService.Int(configCaches.Get("config", "maxIdle"))
-	if idleNum < 1 {
-		idleNum = 5
-	}
-
-	idleTimeout := config.Int(configCaches.Get("config", "idleTimeout"))
-	if idleTimeout < 1 {
-		idleTimeout = DefaultIdleTimeout
-	}
-	timeout := config.Int(configCaches.Get("config", "timeout"))
-	if timeout < 1 {
-		timeout = DefaultTimeout
-	}
-
+func (p *Pool) Set(nodeName, nodeConfig string) {
 	configSlice := strings.Split(nodeConfig, "?password=")
 
-	pools[nodeName] = &redis.Pool{
-		MaxIdle:     idleNum,
-		IdleTimeout: time.Duration(idleTimeout) * time.Second,
+	p.pools[nodeName] = &redis.Pool{
+		MaxIdle:     config.MaxIdle,
+		IdleTimeout: time.Duration(config.IdleTimeOut) * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.DialTimeout("tcp", configSlice[0], time.Duration(timeout)*time.Second, time.Duration(timeout)*time.Second, time.Duration(timeout)*time.Second)
+			c, err := redis.DialTimeout("tcp", configSlice[0], config.Timeout*time.Second, config.Timeout*time.Second, config.Timeout*time.Second)
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +121,22 @@ func (p *Pool) pool(nodeName, nodeConfig string) {
 	}
 }
 
-func (p *Pool) Select(nodeName string)(pool *redis.Pool,err error) {
+// 获取某个连接池
+func (p *Pool) Get(nodeName string) (pool *redis.Pool, err error) {
+	var exist bool
+	if pool, exist = p.pools[nodeName]; !exist {
+		return pool, ErrNodeNotFound
+	}
+
+	return
+}
+
+// 新建连接
+func (p *Pool) Conn(nodeName string) (conn redis.Conn, err error) {
+	if pool, err := p.Get(nodeName); err == nil {
+		conn = pool.Get()
+	}
+
 	return
 }
 
@@ -113,17 +148,15 @@ func Init(redisConfig Config, nodeConfig ini.File) {
 	)
 
 	config.Set(redisConfig)
-	pools = make(map[string]*redis.Pool)
 
 	for nodeName, node := range configNodes {
 		if nodeName == DefaultNodeName {
 			findDefaultNode = true
 		}
-
-		pool(nodeName, node)
+		pool.Set(nodeName, node)
 	}
 
 	if !findDefaultNode {
-		pool(DefaultNodeName, "127.0.0.1:6379?password=")
+		pool.Set(DefaultNodeName, "127.0.0.1:6379?password=")
 	}
 }
