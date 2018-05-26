@@ -1,4 +1,4 @@
-package redis
+package goredis
 
 import (
 	"github.com/vaughan0/go-ini"
@@ -8,11 +8,6 @@ import (
 
 func TestInit(t *testing.T) {
 	testIniFile := ini.File{
-		"config": ini.Section{
-			"maxIdle":     "5",
-			"idleTimeout": "10",
-			"timeout":"5",
-		},
 		"nodes": ini.Section{
 			"default2": "127.2.1.1:6379",
 		},
