@@ -3,39 +3,37 @@ package goredis
 import (
 	"github.com/vaughan0/go-ini"
 	"testing"
-    "github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 )
 
 func TestInit(t *testing.T) {
 	testIniFile := ini.File{
-		"nodes": ini.Section{
-			"default2": "127.2.1.1:6379",
+		"redis_node_default": ini.Section{
+			"scheme": "redis://:@localhost:6379",
+			"slave":  "slave1",
+		},
+		"redis_node_slave1": ini.Section{
+			"scheme": "redis://:@localhost:6379",
 		},
 	}
 
-	Init(testIniFile)
-
-	conn := Pool().Get()
-	defer conn.Close()
-
-	res, err := redis.String(conn.Do("SET", "test", 1))
+	Init(Config{}, testIniFile)
+	node, err := GetNode("default")
 	if err != nil {
-		t.Error("exec command `set test 1` fail,error:", err.Error())
-	} else if res != "OK" {
-		t.Error("exec command `set test 1` fail,want to get the result `OK`,but get `", res,"`")
+		t.Error("get node fail,err:", err.Error())
+		return
+	}
+	conn := node.GetConn()
+	defer conn.Close()
+	if _, err = conn.Do("SET", "name", "scofield"); err != nil {
+		t.Error("set command fail! error: ", err.Error())
+		return
 	}
 
-	resInt, err := redis.Int(conn.Do("GET", "test"))
-	if err != nil {
-		t.Error("exec command `get test` fail,error:", err.Error())
-	} else if resInt != 1 {
-        t.Error("exec command `get test` fail,want to get the result 1,but get ",resInt)
-    }
-
-    conn2 := Pool("default2").Get()
-    defer conn2.Close()
-
-    if _,err := conn2.Do("ping");err == nil {
-        t.Error("conect to a not exist redis-server should fail!")
-    }
+	if name, err := redis.String(Command("default", "GET", "name")); err != nil {
+		t.Error("get command fail, error:", err.Error())
+		return
+	} else if name != "scofield" {
+		t.Error("get command resutl fail, result:", name, ", want scofield")
+	}
 }

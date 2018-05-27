@@ -2,7 +2,6 @@ package goredis
 
 import (
 	"github.com/garyburd/redigo/redis"
-	"errors"
 )
 
 // get command
@@ -22,6 +21,9 @@ func Del(nodeName string, keys ...string) (err error) {
 	keysInterface := make([]interface{}, 0, len(keys))
 	if len(keys) == 0 {
 		return
+	}
+	for _, v := range keys {
+		keysInterface = append(keysInterface, v)
 	}
 	_, err = Command(nodeName, "DEL", keysInterface...)
 	return
@@ -53,18 +55,15 @@ func Keys(nodeName string, pattern string) (keys []string, err error) {
 
 // persist command
 func Persist(nodeName, key string) (err error) {
-	if res, err := redis.Bool(Command(nodeName, "PERSIST", key)); err != nil {
-		return
-	} else if !res {
-		return errors.New("operate fail")
+	if _, err := Command(nodeName, "PERSIST", key); err != nil {
+		return err
 	}
-
-	return
+	return nil
 }
 
 // ttl command
-func TTL(nodeName,key string)(ttl int64,err error) {
-	ttl,err = redis.Int64(Command(nodeName,"TTL",key))
+func TTL(nodeName, key string) (ttl int64, err error) {
+	ttl, err = redis.Int64(Command(nodeName, "TTL", key))
 	return
 }
 
@@ -116,7 +115,7 @@ func DecrBy(nodeName, key string, decrNum int) (newValue int64, err error) {
 	return
 }
 
-// decr command
+// incr command
 func Incr(nodeName, key string) (newValue int64, err error) {
 	newValue, err = redis.Int64(Command(nodeName, "INCR", key))
 	return
@@ -135,15 +134,16 @@ func GetSet(nodeName, key string, value interface{}) (curValue interface{}, err 
 }
 
 // hdel command
-func HDel(nodeName string, keys ...string) (err error) {
-	if len(keys) == 0 {
+func HDel(nodeName string, key string, fields ...string) (err error) {
+	if len(fields) == 0 {
 		return
 	}
-	keysInterface := make([]interface{}, 0, len(keys))
-	for _, v := range keys {
-		keysInterface = append(keysInterface, v)
+	fieldsInterface := make([]interface{}, 0, len(fields)+1)
+	fieldsInterface = append(fieldsInterface, key)
+	for _, v := range fields {
+		fieldsInterface = append(fieldsInterface, v)
 	}
-	_, err = Command(nodeName, "HDEL", keysInterface...)
+	_, err = Command(nodeName, "HDEL", fieldsInterface...)
 	return
 }
 

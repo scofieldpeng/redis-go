@@ -8,6 +8,7 @@ import (
 	"errors"
 	"math/rand"
 	"context"
+	"fmt"
 )
 
 type (
@@ -41,6 +42,7 @@ var (
 	pool = Pool{
 		nodes: make(map[string]*Node),
 	}
+	isInit = false
 )
 
 func (c *Config) Set(data Config) {
@@ -92,6 +94,19 @@ func (n *Node) GetConn() (conn redis.Conn) {
 // 使用完毕后务必使用conn.Close()释放连接池
 func (n *Node) GetConnContext(ctx context.Context) (conn redis.Conn, err error) {
 	return n.GetPool().GetContext(ctx)
+}
+
+// 执行command命令
+func (n *Node) Command(command string, args ...interface{}) (response interface{}, err error) {
+	if command == "" {
+		err = errors.New("command required")
+		return
+	}
+
+	conn := n.GetConn()
+	defer conn.Close()
+
+	return conn.Do(command, args...)
 }
 
 // 获取当前节点的所有slave节点，如果出错，返回error
@@ -238,7 +253,7 @@ func (p *Pool) Conn(nodeName string) (conn redis.Conn, err error) {
 }
 
 // Init 初始化redis配置
-func Init(redisConfig Config, nodeConfig ini.File) {
+func Init(redisConfig Config, nodeConfig ini.File, forceInit ...bool) {
 	var (
 		findDefaultNode = false
 		nodeSlaveMap    = make(map[string][]string)
@@ -248,6 +263,14 @@ func Init(redisConfig Config, nodeConfig ini.File) {
 		scheme string
 		slaves string
 	)
+
+	if len(forceInit) == 0 {
+		forceInit = make([]bool, 1)
+		forceInit[0] = false
+	}
+	if isInit && !forceInit[0] {
+		return
+	}
 
 	config.Set(redisConfig)
 
@@ -282,4 +305,8 @@ func Init(redisConfig Config, nodeConfig ini.File) {
 		}
 		pool.SetNode(nodeName, scheme)
 	}
+	if !findDefaultNode {
+		fmt.Println("[warning][redis] not set default node")
+	}
+	isInit = true
 }
