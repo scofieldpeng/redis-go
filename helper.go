@@ -153,6 +153,20 @@ func HExists(nodeName, key, field string) (exist bool, err error) {
 	return
 }
 
+// hset command
+func HSet(nodeName, key, field string, value interface{}) (err error) {
+	_, err = Command(nodeName, "HSET", key, field, value)
+	return
+}
+
+// hmset command
+func HMset(nodeName, key string, values interface{}) (err error) {
+	args := redis.Args{}.Add(key)
+	args = args.AddFlat(values)
+	_, err = Command(nodeName, "HMSET", args...)
+	return
+}
+
 // hget command
 func HGet(nodeName, key, field string) (value interface{}, err error) {
 	value, err = Command(nodeName, "HGET", key, field)
@@ -167,7 +181,7 @@ func HGetAll(nodeName, key string) (values []interface{}, err error) {
 
 // hkeys command
 func HKeys(nodeName, key string) (values []string, err error) {
-	redis.Strings(Command(nodeName, "HKEYS", key))
+	values, err = redis.Strings(Command(nodeName, "HKEYS", key))
 	return
 }
 
@@ -184,7 +198,7 @@ func HLen(nodeName, key string) (length int64, err error) {
 }
 
 // hmget command
-func HMget(nodeName, key string, fields ...string) (values []interface{}, err error) {
+func HMget(nodeName, key string, fields ...string) (values interface{}, err error) {
 	if len(fields) == 0 {
 		return
 	}
@@ -193,7 +207,6 @@ func HMget(nodeName, key string, fields ...string) (values []interface{}, err er
 	for _, v := range fields {
 		fieldsInterface = append(fieldsInterface, v)
 	}
-
-	values, err = redis.Values(Command(nodeName, "HMGET", fieldsInterface))
+	values, err = Command(nodeName, "HMGET", fieldsInterface...)
 	return
 }
