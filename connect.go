@@ -113,10 +113,10 @@ func (n *Node) Command(command string, args ...interface{}) (response interface{
 func (n *Node) GetSlaves() (nodes []*Node, err error) {
 	var node *Node
 
-	nodes = make([]*Node, 0)
+	nodes = make([]*Node, 0, len(n.slaves))
 	if len(n.slaves) > 0 {
 		for _, v := range n.slaves {
-			if node, err = GetNode(v); err == nil {
+			if node, err = pool.GetNode(v); err == nil {
 				nodes = append(nodes, node)
 			}
 		}
@@ -145,17 +145,11 @@ func (n *Node) GetSlave(slaveName ...string) (node *Node, err error) {
 
 // 获取节点
 func GetNode(node ...string) (n *Node, err error) {
-	var exist bool
 	if len(node) == 0 {
 		node = make([]string, 1)
 		node[0] = DefaultNodeName
 	}
-	n, exist = pool.nodes[node[0]]
-	if !exist {
-		err = ErrNodeNotFound
-	}
-
-	return
+	return pool.GetNode(node[0])
 }
 
 // 执行命令,传入节点名称，执行的命令名，命令参数，返回的第一个参数为返回值，如果出错，第二个参数为空
@@ -242,16 +236,6 @@ func (p *Pool) GetNode(nodeName string) (node *Node, err error) {
 	return
 }
 
-// 新建连接
-func (p *Pool) Conn(nodeName string) (conn redis.Conn, err error) {
-	var node *Node
-	if node, err = p.GetNode(nodeName); err == nil {
-		conn = node.GetConn()
-	}
-
-	return
-}
-
 // Init 初始化redis配置
 func Init(redisConfig Config, nodeConfig ini.File, forceInit ...bool) {
 	var (
@@ -304,6 +288,7 @@ func Init(redisConfig Config, nodeConfig ini.File, forceInit ...bool) {
 			findDefaultNode = true
 		}
 		pool.SetNode(nodeName, scheme)
+		pool.SetSlaves(nodeName, nodeSlaveMap[nodeName])
 	}
 	if !findDefaultNode {
 		fmt.Println("[warning][redis] not set default node")

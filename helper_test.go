@@ -18,7 +18,7 @@ func testInit() {
 
 func TestSet(t *testing.T) {
 	testInit()
-	err := Set("default", "name", "scofield")
+	err := NewHelper().Set("name", "scofield")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -26,7 +26,7 @@ func TestSet(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	testInit()
-	res, err := redis.String(Get("default", "name"))
+	res, err := redis.String(NewHelper().Get("name"))
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -37,7 +37,7 @@ func TestGet(t *testing.T) {
 
 func TestDel(t *testing.T) {
 	testInit()
-	err := Del("default", "name")
+	err := NewHelper().Del("name")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -45,7 +45,7 @@ func TestDel(t *testing.T) {
 
 func TestExists(t *testing.T) {
 	testInit()
-	exist, err := Exists("default", "abc")
+	exist, err := NewHelper().Exists("abc")
 	if err != nil {
 		t.Error(err.Error())
 	} else if exist {
@@ -55,7 +55,7 @@ func TestExists(t *testing.T) {
 
 func TestExpire(t *testing.T) {
 	testInit()
-	err := Expire("default", "name", 1)
+	err := NewHelper().Expire("name", 1)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -63,8 +63,8 @@ func TestExpire(t *testing.T) {
 
 func TestExpireAt(t *testing.T) {
 	testInit()
-	Set("default", "name", "scofield")
-	err := ExpireAt("default", "name", time.Now().Unix()+100)
+	NewHelper().Set("name", "scofield")
+	err := NewHelper().ExpireAt("name", time.Now().Unix()+100)
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -72,7 +72,7 @@ func TestExpireAt(t *testing.T) {
 
 func TestKeys(t *testing.T) {
 	testInit()
-	keys, err := Keys(DefaultNodeName, "name")
+	keys, err := NewHelper().Keys("name")
 	if err != nil {
 		t.Error(err.Error())
 	} else if len(keys) > 1 || keys[0] != "name" {
@@ -82,12 +82,12 @@ func TestKeys(t *testing.T) {
 
 func TestPersist(t *testing.T) {
 	testInit()
-	Setex(DefaultNodeName, "name", 100, "scofield")
-	err := Persist(DefaultNodeName, "name")
+	NewHelper().Setex("name", 100, "scofield")
+	err := NewHelper().Persist("name")
 	if err != nil {
 		t.Error(err.Error())
 	}
-	ttl, err := TTL(DefaultNodeName, "name")
+	ttl, err := NewHelper().TTL("name")
 	if err != nil {
 		t.Error("get ttl fail,err:", err.Error())
 		return
@@ -99,14 +99,14 @@ func TestPersist(t *testing.T) {
 
 func TestTTL(t *testing.T) {
 	testInit()
-	ttl, err := TTL(DefaultNodeName, "notExistKey")
+	ttl, err := NewHelper().TTL("notExistKey")
 	if err != nil {
 		t.Error(err.Error())
 	} else if ttl != -2 {
 		t.Error("ttl not exist key not get -2, get: ", ttl)
 	}
-	Set(DefaultNodeName, "name", "scofield")
-	ttl, err = TTL(DefaultNodeName, "name")
+	NewHelper().Set("name", "scofield")
+	ttl, err = NewHelper().TTL("name")
 	if err != nil {
 		t.Error(err.Error())
 	} else if ttl != -1 {
@@ -116,7 +116,7 @@ func TestTTL(t *testing.T) {
 
 func TestSetex(t *testing.T) {
 	testInit()
-	err := Setex(DefaultNodeName, "hello", 1, "world")
+	err := NewHelper().Setex("hello", 1, "world")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -124,7 +124,7 @@ func TestSetex(t *testing.T) {
 
 func TestSetnx(t *testing.T) {
 	testInit()
-	err := Setnx(DefaultNodeName, "name", "scofield")
+	err := NewHelper().Setnx("name", "scofield")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -132,7 +132,7 @@ func TestSetnx(t *testing.T) {
 
 func TestMSet(t *testing.T) {
 	testInit()
-	err := MSet(DefaultNodeName, map[string]interface{}{
+	err := NewHelper().MSet(map[string]interface{}{
 		"name": "scofield",
 		"age":  26,
 	})
@@ -143,7 +143,7 @@ func TestMSet(t *testing.T) {
 
 func TestMGet(t *testing.T) {
 	testInit()
-	res, err := MGet(DefaultNodeName, "name", "age")
+	res, err := NewHelper().MGet("name", "age")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -153,8 +153,8 @@ func TestMGet(t *testing.T) {
 
 func TestDecr(t *testing.T) {
 	testInit()
-	oldValue, _ := redis.Int64(Get(DefaultNodeName, "age"))
-	newV, err := Decr(DefaultNodeName, "age")
+	oldValue, _ := redis.Int64(NewHelper().Get("age"))
+	newV, err := NewHelper().Decr("age")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -166,8 +166,8 @@ func TestDecr(t *testing.T) {
 
 func TestDecrBy(t *testing.T) {
 	testInit()
-	oldValue, _ := redis.Int64(Get(DefaultNodeName, "age"))
-	newV, err := DecrBy(DefaultNodeName, "age", 2)
+	oldValue, _ := redis.Int64(NewHelper().Get("age"))
+	newV, err := NewHelper().DecrBy("age", 2)
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -179,8 +179,8 @@ func TestDecrBy(t *testing.T) {
 
 func TestIncr(t *testing.T) {
 	testInit()
-	oldValue, _ := redis.Int64(Get(DefaultNodeName, "age"))
-	newV, err := Incr(DefaultNodeName, "age")
+	oldValue, _ := redis.Int64(NewHelper().Get("age"))
+	newV, err := NewHelper().Incr("age")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -192,8 +192,8 @@ func TestIncr(t *testing.T) {
 
 func TestIncrBy(t *testing.T) {
 	testInit()
-	oldValue, _ := redis.Int64(Get(DefaultNodeName, "age"))
-	newValue, err := IncrBy(DefaultNodeName, "age", 2)
+	oldValue, _ := redis.Int64(NewHelper().Get("age"))
+	newValue, err := NewHelper().IncrBy("age", 2)
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -205,13 +205,13 @@ func TestIncrBy(t *testing.T) {
 
 func TestGetSet(t *testing.T) {
 	testInit()
-	oldValue, err := redis.String(GetSet(DefaultNodeName, "name", "julia"))
+	oldValue, err := redis.String(NewHelper().GetSet("name", "julia"))
 	if err != nil {
 		t.Error(err.Error())
 		return
 	}
 	t.Log("old value:", oldValue)
-	newValue, err := redis.String(Get(DefaultNodeName, "name"))
+	newValue, err := redis.String(NewHelper().Get("name"))
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -222,7 +222,7 @@ func TestGetSet(t *testing.T) {
 
 func TestHDel(t *testing.T) {
 	testInit()
-	err := HDel(DefaultNodeName, "student", "name", "age")
+	err := NewHelper().HDel("student", "name", "age")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -230,7 +230,7 @@ func TestHDel(t *testing.T) {
 
 func TestHExists(t *testing.T) {
 	testInit()
-	exist, err := HExists(DefaultNodeName, "student", "name")
+	exist, err := NewHelper().HExists("student", "name")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -239,8 +239,8 @@ func TestHExists(t *testing.T) {
 		t.Error("find not exist value")
 		return
 	}
-	HSet(DefaultNodeName, "student", "name", "scofield")
-	exist, err = HExists(DefaultNodeName, "student", "name")
+	NewHelper().HSet("student", "name", "scofield")
+	exist, err = NewHelper().HExists("student", "name")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -252,12 +252,12 @@ func TestHExists(t *testing.T) {
 
 func TestHGet(t *testing.T) {
 	testInit()
-	err := HSet(DefaultNodeName, "student", "name", "scofield")
+	err := NewHelper().HSet("student", "name", "scofield")
 	if err != nil {
 		t.Error(err.Error())
 		return
 	}
-	name, err := redis.String(HGet(DefaultNodeName, "student", "name"))
+	name, err := redis.String(NewHelper().HGet("student", "name"))
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -274,13 +274,13 @@ func TestHGetAll(t *testing.T) {
 	}
 	testInit()
 	ts := testStudent{Name: "scofield", Age: 26}
-	err := HMset(DefaultNodeName, "student", ts)
+	err := NewHelper().HMset("student", ts)
 	if err != nil {
 		t.Error(err.Error())
 		return
 	}
 	ts = testStudent{}
-	v, err := HGetAll(DefaultNodeName, "student")
+	v, err := NewHelper().HGetAll("student")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -298,7 +298,7 @@ func TestHGetAll(t *testing.T) {
 
 func TestHKeys(t *testing.T) {
 	testInit()
-	err := HMset(DefaultNodeName, "student", map[string]interface{}{
+	err := NewHelper().HMset("student", map[string]interface{}{
 		"name": "scofield",
 		"age":  26,
 	})
@@ -306,7 +306,7 @@ func TestHKeys(t *testing.T) {
 		t.Error(err.Error())
 		return
 	}
-	keys, err := HKeys(DefaultNodeName, "student")
+	keys, err := NewHelper().HKeys("student")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -320,11 +320,11 @@ func TestHKeys(t *testing.T) {
 
 func TestHVals(t *testing.T) {
 	testInit()
-	HMset(DefaultNodeName, "student", map[string]interface{}{
+	NewHelper().HMset("student", map[string]interface{}{
 		"name": "scofield",
 		"age":  "26",
 	})
-	values, err := redis.Strings(HVals(DefaultNodeName, "student"))
+	values, err := redis.Strings(NewHelper().HVals("student"))
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -341,7 +341,7 @@ func TestHVals(t *testing.T) {
 
 func TestHLen(t *testing.T) {
 	testInit()
-	l, err := HLen(DefaultNodeName, "notExist")
+	l, err := NewHelper().HLen("notExist")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -350,7 +350,7 @@ func TestHLen(t *testing.T) {
 		t.Error("should not neq 0")
 		return
 	}
-	if err = HMset(DefaultNodeName, "student", map[string]interface{}{
+	if err = NewHelper().HMset("student", map[string]interface{}{
 		"name": "scofield",
 		"age":  26,
 	}); err != nil {
@@ -358,7 +358,7 @@ func TestHLen(t *testing.T) {
 		return
 	}
 
-	l, err = HLen(DefaultNodeName, "student")
+	l, err = NewHelper().HLen("student")
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -370,7 +370,7 @@ func TestHLen(t *testing.T) {
 
 func TestHMget(t *testing.T) {
 	testInit()
-	err := HMset(DefaultNodeName, "student", map[string]interface{}{
+	err := NewHelper().HMset("student", map[string]interface{}{
 		"name": "scofield",
 		"age":  26,
 	})
@@ -378,7 +378,7 @@ func TestHMget(t *testing.T) {
 		t.Error(err.Error())
 		return
 	}
-	v, err := redis.Strings(HMget(DefaultNodeName, "student", "name"))
+	v, err := redis.Strings(NewHelper().HMget("student", "name"))
 	if err != nil {
 		t.Error(err.Error())
 		return
