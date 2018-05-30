@@ -8,52 +8,70 @@ A simple redis client written by Golang.
 go get github.com/scofieldpeng/redis-go
 ```
 
-## Usage
-
-First, create ini File in your `$Project_Directory/config/redis.ini`, write these config the `redis.ini`
-
-```ini
-[config]
-# max idle connection in pools
-maxIdle=5
-# idle timeout(seconds) in pools
-idleTimeout=60
-# connect && read && write timeout(seconds)
-timeout=10
-
-# redis server nodes
-[nodes]
-# default is node name
-default=127.0.0.1:6379?password=123456
-slave1=127.0.0.1:6378?password=123456
-```
-
-Second, Load ini file
+## Quick start
 
 ```go
-redisConfigs := config.Config("redis") // import github.com/scofieldpeng/config-go,this config docuement see the github :-)
-```
+package main
 
-Now, Init Config
+import (
+	"fmt"
+	"time"
+	
+	"github.com/scofieldpeng/config"
+	"github.com/scofieldpeng/redis-go"
+	"github.com/gomodule/redigo/redis"
+)
 
-```go
-redis.Init(redisConfigs)
-```
+func main(){
+    	
+	// we use the ini file as the config format
+	// config package document, see https://github.com/scofieldpeng/config pls
+	// app.ini file
+	// 
+    // # default is the node name
+    // [redis_node_default]
+    // # scheme is the connection struct of redis
+    // # format: redis://username:password@host:port/dbname
+    // scheme=redis://user:secret@localhost:6379/db
+    // # if this node have node, add node name to there, multiple nodes joined by comma
+    // slaves=slave1
+    // 
+    // # node slave1
+    // [redis_node_slave1]
+    // scheme=redis://user:secret@localhost:6379/db
 
-then you can use
-
-```go
-conn := redis.Pool().Get()
-defer conn.Close()
-
-if _,err := conn.Do("SET","test",123);err != nil {
-    log.Println(err.Error())
+    // # node slave2
+    // [redis_node_slave2]
+    // scheme=redis://user:secret@localhost:6379/db
+    nodesConfig := config.Data("app")
+    goredis.Init(goredis.Config{
+    	MaxActive:10,
+    	MaxIdle:5,
+    	Timeout:time.Second * 5,
+        Wait:true,	
+    },nodesConfig)
+   
+    _,err := goredis.Command("default","SET","name","scofield")
+    if err == nil {
+   	     // if u want to transfer result to string, use the redis.String() to get the result
+   	     // more transfer helper, u can see the doc of github.com/gomodule/redigo/redis
+   	     name,_:= redis.String(goredis.Command("default","GET","name"))
+   	     fmt.Println(name)
+    }
+   
+    // or USE the helper
+    // equivalent to goredis.Command("default","SET","name","scofield")
+    goredis.Set("default","name","scofield")
+    // equivalent to goredis.Command("default","GET","name")
+    goredis.Get("default","name")
+     
+    // more helper see https://github.com/scofieldpeng/redis-go/helper.go
 }
 ```
 
 ## More documention
 
-the redis package is based on [https://github.com/garyburd/redigo](https://github.com/garyburd/redigo), so you can view the detail from there:-)
+the redis package is based on [https://github.com/gomodule/redigo](https://github.com/gomodule/redigo), so you can view the detail from there:-)
 
 ## Licence
  
@@ -61,4 +79,4 @@ MIT Licence
 
 ## Thanks
 
-1. [https://github.com/garyburd/redigo](https://github.com/garyburd/redigo)
+1. [https://github.com/gomodule/redigo](https://github.com/gomodule/redigo)

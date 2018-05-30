@@ -1,46 +1,69 @@
-package redis
+package goredis
 
 import (
 	"github.com/vaughan0/go-ini"
 	"testing"
-    "github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 )
 
 func TestInit(t *testing.T) {
 	testIniFile := ini.File{
-		"config": ini.Section{
-			"maxIdle":     "5",
-			"idleTimeout": "10",
-			"timeout":"5",
+		"redis_node_default": ini.Section{
+			"scheme": "redis://:@localhost:6379",
+			"slaves": "slave1",
 		},
-		"nodes": ini.Section{
-			"default2": "127.2.1.1:6379",
+		"redis_node_slave1": ini.Section{
+			"scheme": "redis://:@localhost:6379",
 		},
 	}
 
-	Init(testIniFile)
+	Init(Config{}, testIniFile)
+	node, err := GetNode()
+	if err != nil {
+		t.Error("get node fail,err:", err.Error())
+		return
+	}
 
-	conn := Pool().Get()
+	conn := node.GetConn()
 	defer conn.Close()
-
-	res, err := redis.String(conn.Do("SET", "test", 1))
-	if err != nil {
-		t.Error("exec command `set test 1` fail,error:", err.Error())
-	} else if res != "OK" {
-		t.Error("exec command `set test 1` fail,want to get the result `OK`,but get `", res,"`")
+	if _, err = conn.Do("SET", "name", "scofield"); err != nil {
+		t.Error("set command fail! error: ", err.Error())
+		return
 	}
 
-	resInt, err := redis.Int(conn.Do("GET", "test"))
+	name, err := redis.String(node.Command("GET", "name"))
 	if err != nil {
-		t.Error("exec command `get test` fail,error:", err.Error())
-	} else if resInt != 1 {
-        t.Error("exec command `get test` fail,want to get the result 1,but get ",resInt)
-    }
+		t.Error("get command fail!error:", err.Error())
+	} else if name != "scofield" {
+		t.Error("get wrong result,want scofield,get ", name)
+	}
+	_, err = redis.String(CommandOnSlave(DefaultNodeName, "GET", "name"))
+	if err != nil {
+		t.Error("get slave command fail! error:", err.Error())
+	}
 
-    conn2 := Pool("default2").Get()
-    defer conn2.Close()
+	if _, err = Command(DefaultNodeName, "DEL", "name"); err != nil {
+		t.Error("del command fail,error:", err.Error())
+		return
+	}
+	nodes, err := node.GetSlaves()
+	if err != nil {
+		t.Error("get slaves fai,err:", err.Error())
+	} else if len(nodes) != 1 {
+		t.Error("get slave count is wrong, want 1 get ", len(nodes))
+	}else {
+		conn2 := nodes[0].GetConn()
+		if _, err := conn.Do("DEL", "name"); err != nil {
+			t.Error("run command on slave fail!error:", err.Error())
+		}
+		defer conn2.Close()
+	}
+	node, err = node.GetSlave()
+	if err != nil {
+		t.Error("get slave node fail,err:", err.Error())
+		return
+	}
 
-    if _,err := conn2.Do("ping");err == nil {
-        t.Error("conect to a not exist redis-server should fail!")
-    }
+	t.Log("active:\t", node.GetPool().ActiveCount())
+	t.Log("idle:\t", node.GetPool().IdleCount())
 }
