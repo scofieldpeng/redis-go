@@ -61,9 +61,9 @@ func main(){
    
     // or USE the helper
     // equivalent to goredis.Command("default","SET","name","scofield")
-    goredis.Set("default","name","scofield")
+    goredis.NewHelper().Set("name","scofield")
     // equivalent to goredis.Command("default","GET","name")
-    goredis.Get("default","name")
+    goredis.NewHelper().Get("name")
      
     // more helper see https://github.com/scofieldpeng/redis-go/helper.go
 }
