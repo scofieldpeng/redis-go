@@ -1,7 +1,7 @@
 package goredis
 
 import (
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 )
 
 type Helper struct {

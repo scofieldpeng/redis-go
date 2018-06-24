@@ -3,7 +3,7 @@ package goredis
 import (
 	"testing"
 	"github.com/vaughan0/go-ini"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"time"
 )
 
