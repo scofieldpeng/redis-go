@@ -201,9 +201,9 @@ func (p *Pool) SetNode(nodeName, scheme string) {
 		IdleTimeout: time.Duration(config.IdleTimeOut) * time.Second,
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.DialURL(scheme,
-				redis.DialConnectTimeout(config.IdleTimeOut),
-				redis.DialReadTimeout(config.IdleTimeOut),
-				redis.DialWriteTimeout(config.IdleTimeOut),
+				redis.DialConnectTimeout(config.Timeout),
+				redis.DialReadTimeout(config.Timeout),
+				redis.DialWriteTimeout(config.Timeout),
 			)
 			if err != nil {
 				return nil, err
